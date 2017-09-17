@@ -9,7 +9,7 @@ const router = express.Router();
 router.get("/artwork", (req, res) => {
   console.log("artwork");
   var db = new sqlite3.Database("./moma_artwork.sqlite3");
-  db.all("SELECT * from moma_artworks LIMIT 200", [], (err, data) => {
+  db.all("SELECT * from moma_artworks", [], (err, data) => {
     if (err) {
       console.log(err);
       return;
