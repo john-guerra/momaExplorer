@@ -7,6 +7,8 @@ const router = express.Router();
 
 /* GET index page. */
 router.get("/artwork", (req, res) => {
+
+
   console.log("artwork");
   var db = new sqlite3.Database("./moma_artwork.sqlite3");
   db.all("SELECT * from moma_artworks", [], (err, data) => {
