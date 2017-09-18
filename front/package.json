@@ -2,6 +2,7 @@
   "name": "front",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://john-guerra.github.io/momaExplorer/front/build/",
   "dependencies": {
     "d3": "^4.10.2",
     "react": "^15.6.1",
@@ -15,5 +16,5 @@
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"
   },
-  "proxy": "http://localhost:3000"
+  "_proxy": "http://localhost:3000"
 }
