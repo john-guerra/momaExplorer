@@ -39,7 +39,6 @@ class App extends Component {
   }
 
   componentDidMount() {
-    //d3.csv("https://s3.amazonaws.com/btactile/Artworks.csv.gz", (err, data) => {
     d3.csv("./Artworks.csv.gz", (err, data) => {
       if (err) throw err;
       const parseDate = d3.timeParse("%Y-%m-%d");
