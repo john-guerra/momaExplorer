@@ -39,20 +39,21 @@ class App extends Component {
   }
 
   componentDidMount() {
-    d3.csv("./Artworks.csv.gz", (err, data) => {
+    d3.csv("./Artworks_less_columns.csv", (err, data) => {
       if (err) throw err;
       const parseDate = d3.timeParse("%Y-%m-%d");
       data.forEach((row) => {
         row["Height (cm)"] = +row["Height (cm)"];
         row["Width (cm)"] = +row["Width (cm)"];
         row["DateAcquired"] = parseDate(row["DateAcquired"]);
-
+        row["hasImage"] = row.ThumbnailURL ? true : false;
         row.date = row.Date ? +(row.Date.replace( /^\D+/g, "").slice(0,4)) : row.Date;
         row.date = !isNaN(row.date) && row.date>1700 ? row.date : null;
       });
       this.setState({
-        images:convert(data.slice(0,50)),
-        data:d3.range(1).reduce((p) => p.concat(data),[])
+        images:convert(data.slice(0,51)),
+        // data:d3.range(10).reduce((p) => p.concat(data),[])
+        data:data
       });
     });
     // fetch("http://localhost:8080/Artworks.csv.gz")
@@ -77,33 +78,52 @@ class App extends Component {
 
   updateCallback(filteredData) {
     this.setState({
-      images:convert(filteredData.slice(0,50))
+      images:convert(filteredData.slice(0,51))
     });
   }
 
   render() {
+    console.log("Render App");
     return (
       <div className="App">
         {//<ImageGallery images={this.state.data}></ImageGallery>
         }
-        <Router >
-          <Switch>
-            <Route exact path="/" render={() =>
-              <NodeNavigatorComponent
-                data={this.state.data}
-                updateCallback={this.updateCallback.bind(this)}>
-              </NodeNavigatorComponent>
+        <h1>Node Navigator: MoMA Collection</h1>
+        {this.state.data.length===0 ?
+          <h3>Please wait while we download 130k records</h3>
+          :
+          <div>
+            <NodeNavigatorComponent
+              data={this.state.data}
+              updateCallback={this.updateCallback.bind(this)}>
+            </NodeNavigatorComponent>
+            {/*
+            <Router >
+              <Switch>
+                <Route path="./" render={() =>
+                  <NodeNavigatorComponent
+                    data={this.state.data}
+                    updateCallback={this.updateCallback.bind(this)}>
+                  </NodeNavigatorComponent>
 
-            } />
-            <Route path="/faceted" render={() =>
-              <Faceted
-                data={this.state.data}
-                updateCallback={this.updateCallback.bind(this)}>
-              </Faceted>
-            } />
-          </Switch>
-        </Router>
-        <Gallery images={this.state.images}/>
+                } />
+                <Route path="./faceted" render={() =>
+                  <Faceted
+                    data={this.state.data}
+                    updateCallback={this.updateCallback.bind(this)}>
+                  </Faceted>
+                } />
+              </Switch>
+            </Router>
+            */}
+            <Gallery images={this.state.images}/>
+          </div>
+
+        }
+        <div className="footer">
+          <p> All the images and data is property of the <a href="https://github.com/MuseumofModernArt/collection">Museum of Modem Art of New York</a> that was released under a CC0 license.</p>
+        </div>
+
       </div>
     );
   }

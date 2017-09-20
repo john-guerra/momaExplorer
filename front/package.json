@@ -2,9 +2,11 @@
   "name": "front",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://john-guerra.github.io/momaExplorer/front/build/",
+  "homepage": "https://john-guerra.github.io/momaExplorer/",
   "dependencies": {
     "d3": "^4.10.2",
+    "d3-scale-chromatic": "^1.1.1",
+    "prop-types": "^15.5.10",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "react-router-dom": "^4.2.2",
@@ -14,7 +16,12 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
-  "_proxy": "http://localhost:3000"
+  "_proxy": "http://localhost:3000",
+  "devDependencies": {
+    "gh-pages": "^1.0.0"
+  }
 }

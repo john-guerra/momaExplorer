@@ -1,3 +1,13 @@
 img {
   z-index: -1;
 }
+
+body {
+  font-family: sans-serif;
+  margin: 20px
+
+}
+
+.footer {
+  clear: both;
+}

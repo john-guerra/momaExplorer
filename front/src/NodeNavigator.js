@@ -20,7 +20,7 @@ export default function NodeNavigator(eleId, h) {
     // Taken from d3.chromatic https://github.com/d3/d3-scale-chromatic/blob/master/src/sequential-single/Blues.js
     defaultColorRange = ["#deebf7", "#2171b5"],
     visibleColorRange = ["white", "#b5cf6b"],
-
+    fmt = d3.format(",.0d"),
     x0=0,
     y0=100,
     id = "id",
@@ -43,7 +43,8 @@ export default function NodeNavigator(eleId, h) {
 
   d3.select(eleId)
     // .attr("width", 150)
-    // .attr("height", h)
+    .style("height", h + "px")
+    .style("float", "left")
     .attr("class", "NodeNavigator")
     .append("div")
       .style("float", "left")
@@ -63,11 +64,29 @@ export default function NodeNavigator(eleId, h) {
   svg.append("g")
     .attr("class", "attribs");
 
-  svg.append("text")
+  svg.append("g")
     .attr("class", "tooltip")
-    .style("pointer-events", "none")
-    .style("font-family", "sans-serif")
-    .attr("x", -100);
+    .style("text-shadow", "0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff")
+    .attr("transform", "translate(-100,-10)")
+    .append("text")
+      .attr("x", 0)
+      .attr("y", 0)
+      .style("pointer-events", "none")
+      .style("font-family", "sans-serif")
+      .style("font-size", "16pt");
+
+  svg.select(".tooltip > text")
+    .append("tspan")
+      .attr("class", "tool_id")
+      .attr("x", 0)
+      .attr("dy", "1.2em");
+
+  svg.select(".tooltip > text")
+    .append("tspan")
+      .attr("class", "tool_value")
+      .style("font-weight", "bold")
+      .attr("x", 0)
+      .attr("dy", "1.2em");
 
   svg.append("g")
     .attr("id", "closeButton")
@@ -109,7 +128,7 @@ export default function NodeNavigator(eleId, h) {
   canvas.style.top = canvas.offsetTop + "px";
   canvas.style.left = canvas.offsetLeft + "px";
   // canvas.style.width =  "150px";
-  // canvas.style.height = h + "px";
+  canvas.style.height = h + "px";
 
   context = canvas.getContext("2d");
   // context.strokeStyle = "rgba(0,100,160,1)";
@@ -133,7 +152,7 @@ export default function NodeNavigator(eleId, h) {
     data[d.level] = data[d.level].sort(function (a, b) {
       return d3.ascending(a[d.attrib], b[d.attrib]);
     });
-    data[d.level].forEach(function (d,i) { d.__i = i; });
+    data[d.level].forEach(function (row,i) { row.__i[d.level] = i; });
     var after = performance.now();
     console.log("Click sorting " + (after-before) + "ms");
     dSortBy.set(d.level, d.attrib);
@@ -250,7 +269,9 @@ export default function NodeNavigator(eleId, h) {
 
       var first = dData.get(invertOrdinalScale(yScales[i], brushed[0] -yScales[i].bandwidth())),
         last = dData.get(invertOrdinalScale(yScales[i], brushed[1] -yScales[i].bandwidth()));
-
+      console.log("first and last");
+      console.log(first);
+      console.log(last);
       // var brush0_minus_bandwidth = brushed[0] - yScales[i].bandwidth();
       // var filteredData = data[i].filter(function (d) {
       //   var y = yScales[i](d[id]);
@@ -259,16 +280,23 @@ export default function NodeNavigator(eleId, h) {
       // });
 
       var filteredData = data[i].filter(function (d) {
-        return d.__i >= first.__i && d.__i <= last.__i;
+        d.visible = d.__i[i] >= first.__i[i] && d.__i[i] <= last.__i[i];
+        return d.visible;
       });
+
+      //Assign the index
+      filteredData.forEach(function(d, j) {
+        d.__i[i+1] = j;
+      });
+
       var after = performance.now();
       console.log("Brushend filtering " + (after-before) + "ms");
 
 
       var newData;
       if (filteredData.length===0) { // empty selection -> remove level
-        newData = data.slice(0, i);
         console.log("Empty selection!");
+        return;
       } else {
         newData = data.slice(0,i+1);
         newData.push(filteredData);
@@ -342,15 +370,25 @@ export default function NodeNavigator(eleId, h) {
     // });
 
     svg.select(".tooltip")
-      .attr("x", screenX + 20)
-      .attr("y", screenY)
-      .text(itemId + "  " + itemAttr + " : " + d[itemAttr]);
+      .attr("transform", "translate(" + (screenX) + "," + (screenY+20) + ")")
+      .call(function (tool) {
+        tool.select(".tool_id")
+          .text(itemId);
+        tool.select(".tool_value")
+          .text(itemAttr + " : " + d[itemAttr]);
+      });
   }
 
   function onMouseOut() {
     svg.select(".tooltip")
-      .attr("x", -100)
-      .text("");
+      .attr("transform", "translate(" + (-200) + "," + (-200) + ")")
+      .call(function (tool) {
+        tool.select(".tool_id")
+          .text("");
+        tool.select(".tool_value")
+          .text("");
+      });
+
   }
 
   function drawBrushes() {
@@ -391,6 +429,7 @@ export default function NodeNavigator(eleId, h) {
       .enter()
         .append("g")
         .attr("class", "attribOverlay")
+        .style("cursor", "pointer")
         .attr("transform", function (d) {
           return "translate(" +
             x(d.attrib, d.level) +
@@ -435,6 +474,7 @@ export default function NodeNavigator(eleId, h) {
       .append("text")
         .attr("class", "numNodesLabel")
         .style("font-family", "sans-serif")
+        .style("pointer-events", "none")
       .merge(levelOverlay.select(".numNodesLabel"))
         .attr("y", function (_, i) {
           return yScales[i].range()[1] + 15;
@@ -443,7 +483,7 @@ export default function NodeNavigator(eleId, h) {
           return  levelScale(i);
         })
         .text(function (d) {
-          return d.length;
+          return fmt(d.length);
         });
 
     levelOverlay.exit().remove();
@@ -514,10 +554,19 @@ export default function NodeNavigator(eleId, h) {
     if (level <= 0) {
       return;
     }
-    data[level].representatives.forEach(function (item, i) {
-      var locPrevLevel = {x: levelScale(level-1) + xScale.range()[1],
-        y: yScales[level-1](item[id]) };
-      var locLevel = {x: levelScale(level),
+    data[level].representatives.forEach(function (item) {
+      // Compute the yPrev by calculating the index of the corresponding representative
+      var iOnPrev = dData.get(item[id]).__i[level-1];
+      var iRep = Math.floor(iOnPrev - iOnPrev%data[level-1].itemsPerpixel);
+      // console.log("i rep = "+ iRep);
+      // console.log(data[level-1][iRep]);
+      // console.log(yScales[level-1](data[level-1][iRep][id]));
+      var locPrevLevel = {
+        x: levelScale(level-1) + xScale.range()[1],
+        y: yScales[level-1](data[level-1][iRep][id])
+      };
+      var locLevel = {
+        x: levelScale(level),
         y: yScales[level](item[id]) };
 
       var points = [ locPrevLevel,
@@ -560,7 +609,7 @@ export default function NodeNavigator(eleId, h) {
     } );
     context.font="14px Arial";
     context.fillStyle="black";
-    context.fillText(data[level].length, levelScale(level), yScales[level].range()[1] + 15);
+    context.fillText(fmt(data[level].length), levelScale(level), yScales[level].range()[1] + 15);
   }
 
 
@@ -575,7 +624,8 @@ export default function NodeNavigator(eleId, h) {
     dData = d3.map();
     mData[0].forEach(function (d, i) {
       dData.set(d[id], d);
-      d.__i = i;
+      d.__i={};
+      d.__i[0] = i;
     });
     // nn.updateData(mData, mColScales, mSortByAttr);
 
@@ -598,7 +648,8 @@ export default function NodeNavigator(eleId, h) {
 
     var representatives = [];
     if (data[levelToUpdate].length>h) {
-      var itemsPerpixel = Math.floor(data[levelToUpdate].length / h);
+      var itemsPerpixel = Math.floor(data[levelToUpdate].length / (h*2));
+      data[levelToUpdate].itemsPerpixel = itemsPerpixel;
       for (var i = 0; i< data[levelToUpdate].length; i+=itemsPerpixel ){
         representatives.push(data[levelToUpdate][i]);
       }
@@ -678,7 +729,7 @@ export default function NodeNavigator(eleId, h) {
       .attr("width", ctxWidth)
       .attr("height", h)
       .style("width", ctxWidth)
-      .style("height", h);
+      .style("height", h+"px");
     canvas.style.width = ctxWidth+"px";
     canvas.style.height = h+"px";
 
