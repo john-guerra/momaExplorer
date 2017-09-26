@@ -52,7 +52,7 @@ class App extends Component {
       });
       this.setState({
         images:convert(data.slice(0,51)),
-        // data:d3.range(10).reduce((p) => p.concat(data),[])
+        // data:d3.range(20).reduce((p) => p.concat(data),[])
         data:data
       });
     });
