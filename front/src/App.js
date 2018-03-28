@@ -88,7 +88,7 @@ class App extends Component {
       <div className="App">
         {//<ImageGallery images={this.state.data}></ImageGallery>
         }
-        <h1>Node Navigator: MoMA Collection</h1>
+        <h1>Navio: MoMA Collection</h1>
         {this.state.data.length===0 ?
           <h3>Please wait while we download 130k records</h3>
           :
