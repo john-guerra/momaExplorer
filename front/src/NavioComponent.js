@@ -1,14 +1,14 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import NodeNavigator from "./NodeNavigator.js";
+import Navio from "./Navio.js";
 
 let d3 = require("d3");
 let d3_chromatic = require("d3-scale-chromatic");
 
-class NodeNavigatorComponent extends Component {
+class NavioComponent extends Component {
   componentDidMount() {
-    console.log("NodeNavigatorComponent did mount");
-    this.nn = new NodeNavigator(this.target, 600)
+    console.log("NavioComponent did mount");
+    this.nn = new Navio(this.target, 600)
       .id("ObjectID")
       .updateCallback(this.props.updateCallback)
       .addSequentialAttrib("Height (cm)",
@@ -34,23 +34,23 @@ class NodeNavigatorComponent extends Component {
   }
 
   componentWillUpdate(newProps) {
-    console.log("NodeNavigatorComponent will update data.length=" + newProps.data.length);
+    console.log("NavioComponent will update data.length=" + newProps.data.length);
     if (newProps.data.length !== this.props.data.length)
       this.nn.data(newProps.data);
   }
 
   render() {
-    console.log("NodeNavigatorComponent render" );
+    console.log("NavioComponent render" );
     return (
       <div
-        className="NodeNavigatorComponent"
+        className="NavioComponent"
         ref={(target) => this.target = target }></div>);
   }
 }
 
-NodeNavigatorComponent.propTypes = {
+NavioComponent.propTypes = {
   data: PropTypes.array.isRequired,
   updateCallback: PropTypes.func.isRequired
 };
 
-export default NodeNavigatorComponent;
+export default NavioComponent;

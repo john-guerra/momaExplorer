@@ -8,7 +8,7 @@ import {
 import "./App.css";
 // import ImageGallery from "./ImageGallery.js";
 import Gallery from "react-grid-gallery";
-import NodeNavigatorComponent from "./NodeNavigatorComponent.js";
+import NavioComponent from "./NavioComponent.js";
 import Faceted from "./Faceted";
 
 
@@ -93,18 +93,18 @@ class App extends Component {
           <h3>Please wait while we download 130k records</h3>
           :
           <div>
-            <NodeNavigatorComponent
+            <NavioComponent
               data={this.state.data}
               updateCallback={this.updateCallback.bind(this)}>
-            </NodeNavigatorComponent>
+            </NavioComponent>
             {/*
             <Router >
               <Switch>
                 <Route path="./" render={() =>
-                  <NodeNavigatorComponent
+                  <NavioComponent
                     data={this.state.data}
                     updateCallback={this.updateCallback.bind(this)}>
-                  </NodeNavigatorComponent>
+                  </NavioComponent>
 
                 } />
                 <Route path="./faceted" render={() =>

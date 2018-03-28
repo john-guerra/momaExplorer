@@ -1,10 +1,10 @@
-/* global d3, NodeNavigator, crossfilter */
+/* global d3, Navio, crossfilter */
 var d3 = require("d3");
 //eleId must be the ID of a context element where everything is going to be drawn
-function NodeNavigator(eleId, h) {
+function Navio(eleId, h) {
   "use strict";
   var nn = this,
-    data = [], //Contains the original data attributes 
+    data = [], //Contains the original data attributes
     dataIs = [], //Contains only the indices to the data, is an array of arrays, one for each level
     dData = d3.map(), // A hash for the data
     dDimensions = d3.map(),
@@ -27,11 +27,13 @@ function NodeNavigator(eleId, h) {
     updateCallback = function () {};
 
   nn.margin = 10;
-  nn.attribWidth = 10;
+  nn.attribWidth = 15;
   nn.levelsSeparation = 40;
   nn.divisionsColor = "white";
   nn.levelConnectionsColor = "rgba(205, 220, 163, 0.5)";
   nn.divisionsThreshold = 3;
+  nn.attribFontSize = 13;
+  nn.attribFontSizeSelected = 32;
 
   nn.startColor = "white";
   nn.endColor = "red";
@@ -45,16 +47,16 @@ function NodeNavigator(eleId, h) {
     // .attr("width", 150)
     .style("height", h + "px")
     .style("float", "left")
-    .attr("class", "NodeNavigator")
+    .attr("class", "Navio")
     .append("div")
       .style("float", "left")
-      .attr("id", "nodeNavigator")
+      .attr("id", "Navio")
       .style("position", "relative");
   d3.select(eleId)
-    .select("#nodeNavigator")
+    .select("#Navio")
     .append("canvas");
   var svg = d3.select(eleId)
-    .select("#nodeNavigator")
+    .select("#Navio")
     .append("svg")
       .style("overflow", "visible")
       .style("position", "absolute")
@@ -131,6 +133,8 @@ function NodeNavigator(eleId, h) {
   canvas.style.height = h + "px";
 
   context = canvas.getContext("2d");
+
+  context.globalCompositeOperation = 'source-over';
   // context.strokeStyle = "rgba(0,100,160,1)";
   // context.strokeStyle = "rgba(0,0,0,0.02)";
 
@@ -178,8 +182,8 @@ function NodeNavigator(eleId, h) {
       // y = yScales[level](item[id]) + yScales[level].bandwidth()/2;
 
       context.beginPath();
-      context.moveTo(x(attrib, level), y);
-      context.lineTo(x(attrib, level) + xScale.bandwidth(), y);
+      context.moveTo(Math.round(x(attrib, level)), y);
+      context.lineTo(Math.round(x(attrib, level) + xScale.bandwidth()), y);
       context.lineWidth = Math.round(yScales[level].bandwidth());
       // context.lineWidth = 1;
       context.strokeStyle = item[attrib] === undefined ||
@@ -238,12 +242,12 @@ function NodeNavigator(eleId, h) {
       d3.brushY()
         .extent([
           [x(xScale.domain()[0], i),yScales[i].range()[0]],
-          [x(xScale.domain()[xScale.domain().length-1], i) + xScale.bandwidth(), yScales[i].range()[1]]
+          [x(xScale.domain()[xScale.domain().length-1], i) + xScale.bandwidth()*1.1, yScales[i].range()[1]]
         ])
         .on("end", brushended));
     var _brush = d3.select(this)
       .selectAll(".brush")
-      .data([{ 
+      .data([{
         data : data[d],
         level : i
       }]);// fake data
@@ -258,7 +262,7 @@ function NodeNavigator(eleId, h) {
       .call(dBrushes.get(i))
       .selectAll("rect")
       // .attr("x", -8)
-      .attr("width", xScale.bandwidth()* (dDimensions.size()+2));
+      .attr("width", x(xScale.domain()[xScale.domain().length-1], i) + xScale.bandwidth()*1.1);
 
     _brush.exit().remove();
 
@@ -270,8 +274,11 @@ function NodeNavigator(eleId, h) {
       var before = performance.now();
       var brushed = d3.event.selection;
 
-      var first = dData.get(invertOrdinalScale(yScales[i], brushed[0] -yScales[i].bandwidth())),
-        last = dData.get(invertOrdinalScale(yScales[i], brushed[1] -yScales[i].bandwidth()));
+      var
+        // first = dData.get(invertOrdinalScale(yScales[i], brushed[0] -yScales[i].bandwidth())),
+        first = dData.get(invertOrdinalScale(yScales[i], brushed[0])),
+        // last = dData.get(invertOrdinalScale(yScales[i], brushed[1] -yScales[i].bandwidth()))
+        last = dData.get(invertOrdinalScale(yScales[i], brushed[1]));
       console.log("first and last");
       console.log(first);
       console.log(last);
@@ -299,7 +306,7 @@ function NodeNavigator(eleId, h) {
 
       console.log("Computing new data");
       var newData = dataIs;
-      if (filteredData.length===0) { 
+      if (filteredData.length===0) {
         console.log("Empty selection!");
         return;
       } else {
@@ -448,16 +455,18 @@ function NodeNavigator(eleId, h) {
       // .style("opacity", "0.1")
       .attr("x", 0)
       .attr("y", 0)
-      .attr("width", function () { return xScale.bandwidth(); })
+      .attr("width", function () {
+        return xScale.bandwidth()*1.1;
+      })
       .attr("height", function (d) { return yScales[d.level].range()[1] - yScales[d.level].range()[0]; });
 
     attribOverlayEnter
       .append("text")
       .merge(attribOverlay.select("text"))
-      .text(function (d) { 
+      .text(function (d) {
         return d.attrib === "__seqId" ?
-          "sequential Index" : 
-          d.attrib; 
+          "sequential Index" :
+          d.attrib;
       })
       .attr("x", xScale.bandwidth()/2)
       .attr("y", 0)
@@ -468,9 +477,9 @@ function NodeNavigator(eleId, h) {
             "normal";
       })
       .style("font-family", "sans-serif")
-      .style("font-size", "9px")
-      .on("mousemove", function (d) { d3.select(this).style("font-size", "24px"); })
-      .on("mouseout", function (d) { d3.select(this).style("font-size", "9px"); })
+      .style("font-size", nn.attribFontSize+"px")
+      .on("mousemove", function (d) { d3.select(this).transition().duration(150).style("font-size", nn.attribFontSizeSelected+"px"); })
+      .on("mouseout", function (d) { d3.select(this).transition().duration(150).style("font-size", nn.attribFontSize+"px"); })
       .attr("transform", "rotate(-45)")
       .on("click", nnOnClickLevel);
 
@@ -590,7 +599,7 @@ function NodeNavigator(eleId, h) {
     var before = performance.now();
     // yScales=[];
     var lastLevel = dataIs.length-1;
-    
+
     console.log("Delete unnecessary scales")
     // Delete unnecessary scales
     yScales.splice(lastLevel+1, yScales.length);
@@ -641,8 +650,8 @@ function NodeNavigator(eleId, h) {
       function (attrib) {
         if (attrib === "visible") return;
         var scale = colScales.get(attrib);
-        scale.domain(d3.extent(dataIs[0].representatives.map(function (rep) { 
-          return data[rep][attrib]; 
+        scale.domain(d3.extent(dataIs[0].representatives.map(function (rep) {
+          return data[rep][attrib];
         }))); //TODO: make it compute it based on the local range
         colScales.set(attrib, scale);
       }
@@ -681,7 +690,7 @@ function NodeNavigator(eleId, h) {
     var before = performance.now();
     var ctxWidth;
     if (typeof mDataIs !== typeof []) {
-      console.error("NodeNavigator updateData didn't receive an array");
+      console.error("Navio updateData didn't receive an array");
       return;
     }
     // if (!dSortBy.has(mDataIs.length-1)) {
@@ -689,7 +698,7 @@ function NodeNavigator(eleId, h) {
     // }
     colScales = mColScales;
     dataIs = mDataIs;
-    
+
     updateScales(levelToUpdate);
 
     ctxWidth = levelScale.range()[1] + nn.margin + x0;
@@ -770,7 +779,7 @@ function NodeNavigator(eleId, h) {
 
   nn.addCategoricalAttrib = function (attr, scale ) {
     nn.addAttrib(attr,scale ||
-      d3.scaleOrdinal(d3.schemeCategory20));
+      d3.scaleOrdinal(d3.schemeCategory10));
     return nn;
   };
 
@@ -800,7 +809,7 @@ function NodeNavigator(eleId, h) {
 
       data = _;
       dataIs = [data.map(function (_, i) { return i; })];
-      
+
 
       nn.initData(
         dataIs,
@@ -840,4 +849,4 @@ function NodeNavigator(eleId, h) {
   return nn;
 }
 
-export default NodeNavigator;
+export default Navio;
