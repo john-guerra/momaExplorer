@@ -2,24 +2,25 @@ import React, {Component} from "react";
 import PropTypes from "prop-types";
 
 import * as d3 from "d3";
-import * as d3_chromatic from "d3-scale-chromatic";
-import Navio from "navio";
+import * as d3ScaleChromatic from "d3-scale-chromatic";
+import navio from "navio";
+
+import "./NavioComponent.css";
 
 class NavioComponent extends Component {
   componentDidMount() {
     console.log("NavioComponent did mount");
-    console.log(Navio);
-    this.nn = Navio(d3.select(this.target), 590)
+    this.nn =  navio(d3.select(this.target), 590)
       .id("ObjectID")
       .updateCallback(this.props.updateCallback)
       .addSequentialAttrib("Height (cm)",
         d3.scalePow()
           .exponent(0.25)
-          .range([d3_chromatic.interpolatePurples(0), d3_chromatic.interpolatePurples(1)]))
+          .range([d3ScaleChromatic.interpolatePurples(0), d3ScaleChromatic.interpolatePurples(1)]))
       .addSequentialAttrib("Width (cm)",
         d3.scalePow()
           .exponent(0.25)
-          .range([d3_chromatic.interpolatePurples(0), d3_chromatic.interpolatePurples(1)]))
+          .range([d3ScaleChromatic.interpolatePurples(0), d3ScaleChromatic.interpolatePurples(1)]))
       .addSequentialAttrib("date")
       // .addSequentialAttrib("Date")
       // .addSequentialAttrib("DateAcquired")
@@ -33,7 +34,13 @@ class NavioComponent extends Component {
     if (this.props.data) {
       this.nn.data(this.props.data);
     }
+
   }
+  // componentDidUpdate() {
+  //   if (this.props.data) {
+  //     this.nn.data(this.props.data);
+  //   }
+  // }
 
   componentWillUpdate(newProps) {
     console.log("NavioComponent will update data.length=" + newProps.data.length);
