@@ -8,20 +8,19 @@ import {
 import "./App.css";
 // import ImageGallery from "./ImageGallery.js";
 import Gallery from "react-grid-gallery";
-import NodeNavigatorComponent from "./NodeNavigatorComponent.js";
-import Faceted from "./Faceted";
+import NavioComponent from "./NavioComponent.js";
+// import Faceted from "./Faceted";
 
+import * as d3 from "d3";
 
-
-var d3 = require("d3");
 
 function convert(data) {
   return data.map((image) => {
     return {
       src : image.ThumbnailURL,
       thumbnail : image.ThumbnailURL,
-      thumbnailWidth: 320,
-      thumbnailHeight: 174,
+      thumbnailWidth: 160,
+      thumbnailHeight: 87,
       caption : image.Title
     };
   });
@@ -78,7 +77,7 @@ class App extends Component {
 
   updateCallback(filteredData) {
     this.setState({
-      images:convert(filteredData.slice(0,51))
+      images:convert(filteredData.slice(0,151))
     });
   }
 
@@ -88,23 +87,23 @@ class App extends Component {
       <div className="App">
         {//<ImageGallery images={this.state.data}></ImageGallery>
         }
-        <h1>Node Navigator: MoMA Collection</h1>
+        <h1>Navio: MoMA Collection</h1>
         {this.state.data.length===0 ?
           <h3>Please wait while we download 130k records</h3>
           :
           <div>
-            <NodeNavigatorComponent
+            <NavioComponent
               data={this.state.data}
               updateCallback={this.updateCallback.bind(this)}>
-            </NodeNavigatorComponent>
+            </NavioComponent>
             {/*
             <Router >
               <Switch>
                 <Route path="./" render={() =>
-                  <NodeNavigatorComponent
+                  <NavioComponent
                     data={this.state.data}
                     updateCallback={this.updateCallback.bind(this)}>
-                  </NodeNavigatorComponent>
+                  </NavioComponent>
 
                 } />
                 <Route path="./faceted" render={() =>
@@ -116,7 +115,11 @@ class App extends Component {
               </Switch>
             </Router>
             */}
-            <Gallery images={this.state.images}/>
+            <Gallery
+              rowHeight={120}
+              enableImageSelection={false}
+              images={this.state.images}
+            />
           </div>
 
         }

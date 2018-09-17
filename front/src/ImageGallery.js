@@ -10,7 +10,7 @@ class ImageGallery extends Component {
 
   renderImages() {
     return this.props.images.map((image) => {
-      return <Image image={image}></Image>;
+      return <Image key={image.id} image={image}></Image>;
     });
   }
 

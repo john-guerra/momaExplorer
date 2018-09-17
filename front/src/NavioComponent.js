@@ -1,14 +1,16 @@
 import React, {Component} from "react";
 import PropTypes from "prop-types";
-import NodeNavigator from "./NodeNavigator.js";
 
-let d3 = require("d3");
-let d3_chromatic = require("d3-scale-chromatic");
+import * as d3 from "d3";
+import * as d3_chromatic from "d3-scale-chromatic";
+import Navio from "navio";
 
-class NodeNavigatorComponent extends Component {
+
+class NavioComponent extends Component {
   componentDidMount() {
-    console.log("NodeNavigatorComponent did mount");
-    this.nn = new NodeNavigator(this.target, 600)
+    console.log("NavioComponent did mount");
+    console.log(Navio);
+    this.nn = Navio(this.target, 590)
       .id("ObjectID")
       .updateCallback(this.props.updateCallback)
       .addSequentialAttrib("Height (cm)",
@@ -25,6 +27,7 @@ class NodeNavigatorComponent extends Component {
       .addCategoricalAttrib("hasImage", d3.scaleOrdinal().range(["white", "rgb(141,221,123)"]))
       .addCategoricalAttrib("Department")
       .addCategoricalAttrib("Classification")
+      .addCategoricalAttrib("Medium")
       .addCategoricalAttrib("Gender")
       .addCategoricalAttrib("Nationality");
 
@@ -34,23 +37,23 @@ class NodeNavigatorComponent extends Component {
   }
 
   componentWillUpdate(newProps) {
-    console.log("NodeNavigatorComponent will update data.length=" + newProps.data.length);
+    console.log("NavioComponent will update data.length=" + newProps.data.length);
     if (newProps.data.length !== this.props.data.length)
       this.nn.data(newProps.data);
   }
 
   render() {
-    console.log("NodeNavigatorComponent render" );
+    console.log("NavioComponent render" );
     return (
       <div
-        className="NodeNavigatorComponent"
+        className="NavioComponent"
         ref={(target) => this.target = target }></div>);
   }
 }
 
-NodeNavigatorComponent.propTypes = {
+NavioComponent.propTypes = {
   data: PropTypes.array.isRequired,
   updateCallback: PropTypes.func.isRequired
 };
 
-export default NodeNavigatorComponent;
+export default NavioComponent;
