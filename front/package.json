@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://john-guerra.github.io/momaExplorer/",
   "dependencies": {
+<<<<<<< HEAD
     "d3": "4.13.0",
     "d3-scale-chromatic": "^1.3.3",
     "navio": "^0.0.12",
@@ -12,6 +13,16 @@
     "react-dom": "^16.5.1",
     "react-router-dom": "^4.3.1",
     "react-scripts": "^1.1.5"
+=======
+    "d3": "^4.10.2",
+    "d3-scale-chromatic": "^1.1.1",
+    "prop-types": "^15.5.10",
+    "react": "^15.6.1",
+    "react-dom": "^15.6.1",
+    "react-grid-gallery": "^0.4.8",
+    "react-router-dom": "^4.2.2",
+    "react-scripts": "1.0.13"
+>>>>>>> 3fe627ab28a1f66bfcc171088c1e9af7f2f4e719
   },
   "scripts": {
     "start": "react-scripts start",

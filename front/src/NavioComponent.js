@@ -5,7 +5,6 @@ import * as d3 from "d3";
 import * as d3_chromatic from "d3-scale-chromatic";
 import Navio from "navio";
 
-
 class NavioComponent extends Component {
   componentDidMount() {
     console.log("NavioComponent did mount");
