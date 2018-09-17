@@ -9,7 +9,7 @@ class NavioComponent extends Component {
   componentDidMount() {
     console.log("NavioComponent did mount");
     console.log(Navio);
-    this.nn = Navio(this.target, 590)
+    this.nn = Navio(d3.select(this.target), 590)
       .id("ObjectID")
       .updateCallback(this.props.updateCallback)
       .addSequentialAttrib("Height (cm)",
