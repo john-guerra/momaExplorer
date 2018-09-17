@@ -531,11 +531,11 @@ function navio(selection, _h) {
       .style("font-family", "sans-serif")
       .style("font-size", nv.attribFontSize+"px")
       .on("click", nvOnClickLevel)
-      .call(d3.drag()
-        .container(attribOverlayEnter.merge(attribOverlay).node())
-        .on("start", attribDragstarted)
-        .on("drag", attribDragged)
-        .on("end", attribDragended))
+      // .call(d3.drag()
+      //   .container(attribOverlayEnter.merge(attribOverlay).node())
+      //   .on("start", attribDragstarted)
+      //   .on("drag", attribDragged)
+      //   .on("end", attribDragended))
       .on("mousemove", function () {
         var sel = d3.select(this);
         sel = sel.transition!==undefined? sel.transition().duration(150) : sel;
