@@ -2,8 +2,8 @@ import React, {Component} from "react";
 import PropTypes from "prop-types";
 
 import * as d3 from "d3";
-import * as d3ScaleChromatic from "d3-scale-chromatic";
-import navio from "../node_modules/navio/dist/navio.js";
+// import * as d3ScaleChromatic from "d3-scale-chromatic";
+import navio from "./navio.js";
 
 import "./NavioComponent.css";
 
@@ -16,11 +16,11 @@ class NavioComponent extends Component {
       .addSequentialAttrib("Height (cm)",
         d3.scalePow()
           .exponent(0.25)
-          .range([d3ScaleChromatic.interpolatePurples(0), d3ScaleChromatic.interpolatePurples(1)]))
+          .range([d3.interpolatePurples(0), d3.interpolatePurples(1)]))
       .addSequentialAttrib("Width (cm)",
         d3.scalePow()
           .exponent(0.25)
-          .range([d3ScaleChromatic.interpolatePurples(0), d3ScaleChromatic.interpolatePurples(1)]))
+          .range([d3.interpolatePurples(0), d3.interpolatePurples(1)]))
       .addSequentialAttrib("date")
       // .addSequentialAttrib("Date")
       // .addSequentialAttrib("DateAcquired")

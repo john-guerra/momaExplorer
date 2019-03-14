@@ -1,7 +1,9 @@
-import * as d3 from "../node_modules/d3/build/d3.js"; // Force react to use the es6 module
+import * as d3 from "./../node_modules/d3/dist/d3.js"; // Force react to use the es6 module
 // import * as d3 from "d3";
 import {interpolateBlues, interpolatePurples, interpolateBrBG} from "d3-scale-chromatic";
+import {FilterByRange, FilterByValue} from "./filters.js";
 
+let DEBUG = false;
 
 //eleId must be the ID of a context element where everything is going to be drawn
 function navio(selection, _h) {
@@ -9,11 +11,14 @@ function navio(selection, _h) {
   var nv = this || {},
     data = [], //Contains the original data attributes
     dataIs = [], //Contains only the indices to the data, is an array of arrays, one for each level
+    links = [],
+    visibleLinks = [],
     dData = d3.map(), // A hash for the data
     dDimensions = d3.map(),
     dimensionsOrder = [],
-    dSortBy = d3.map(), //contains which attribute to sort by on each column
-    dBrushes = d3.map(),
+    dSortBy = [], //contains which attribute to sort by on each column
+    dBrushes = [],
+    filtersByLevel = [], // The filters applied to each level
     yScales =[],
     xScale,
     x,
@@ -23,8 +28,8 @@ function navio(selection, _h) {
     canvas,
     context,
     defaultColorInterpolator =  "interpolateBlues" in d3 ? d3.interpolateBlues : interpolateBlues, // necessary for supporting d3v4 and d3v5
-    // defaultColorInterpolatorDate =  "interpolatePurples" in d3 ? d3.interpolatePurples : interpolatePurples,
-    // defaultColorInterpolatorDiverging =  "interpolateBrBG" in d3 ? d3.interpolateBrBG : interpolateBrBG,
+    defaultColorInterpolatorDate =  "interpolatePurples" in d3 ? d3.interpolatePurples : interpolatePurples,
+    defaultColorInterpolatorDiverging =  "interpolateBrBG" in d3 ? d3.interpolateBrBG : interpolateBrBG,
     visibleColorRange = ["white", "#b5cf6b"],
     fmt = d3.format(",.0d"),
     x0=0,
@@ -32,12 +37,13 @@ function navio(selection, _h) {
     id = "__seqId",
     updateCallback = function () {};
 
+  nv.howManyItemsShouldSearchForNotNull = 100;
   nv.margin = 10;
   nv.attribWidth = 15;
   nv.levelsSeparation = 40;
   nv.divisionsColor = "white";
   nv.levelConvectionsColor = "rgba(205, 220, 163, 0.5)";
-  nv.divisionsThreshold = 3;
+  nv.divisionsThreshold = 4; // What's the minimum row width needed to draw divisions
   nv.attribFontSize = 13;
   nv.attribFontSizeSelected = 32;
 
@@ -49,7 +55,7 @@ function navio(selection, _h) {
 
 
   function nozoom() {
-    console.log("nozoom");
+    if (DEBUG) console.log("nozoom");
     d3.event.preventDefault();
   }
 
@@ -66,56 +72,56 @@ function navio(selection, _h) {
     .style("height", height + "px")
     .attr("class", "navio")
     .append("div")
-      // .style("float", "left")
-      .attr("id", "navio")
-      .style("position", "relative");
+    // .style("float", "left")
+    .attr("id", "navio")
+    .style("position", "relative");
   selection
     .select("#navio")
     .append("canvas");
   var svg = selection
     .select("#navio")
     .append("svg")
-      .style("overflow", "visible")
-      .style("position", "absolute")
-      .style("z-index", 99)
-      .style("top", 0)
-      .style("left", 0);
+    .style("overflow", "visible")
+    .style("position", "absolute")
+    .style("z-index", 99)
+    .style("top", 0)
+    .style("left", 0);
 
 
   svg.append("g")
     .attr("class", "attribs");
 
   svg.append("g")
-    .attr("class", "tooltip")
+    .attr("class", "nvTooltip")
     .style("text-shadow", "0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff")
     .attr("transform", "translate(-100,-10)")
     .append("text")
-      .attr("x", 0)
-      .attr("y", 0)
-      .style("pointer-events", "none")
-      .style("font-family", "sans-serif")
-      .style("font-size", "16pt")
-      .style("text-anchor", "middle");
+    .attr("x", 0)
+    .attr("y", 0)
+    .style("pointer-events", "none")
+    .style("font-family", "sans-serif")
+    .style("font-size", "16pt")
+    .style("text-anchor", "middle");
 
-  svg.select(".tooltip > text")
+  svg.select(".nvTooltip > text")
     .append("tspan")
-      .attr("class", "tool_id")
-      .attr("x", 0)
-      .attr("dy", "1.2em");
+    .attr("class", "tool_id")
+    .attr("x", 0)
+    .attr("dy", "1.2em");
 
-  svg.select(".tooltip > text")
+  svg.select(".nvTooltip > text")
     .append("tspan")
-      .attr("class", "tool_value_name")
-      .style("font-weight", "bold")
-      .attr("x", 0)
-      .attr("dy", "1.2em");
+    .attr("class", "tool_value_name")
+    .style("font-weight", "bold")
+    .attr("x", 0)
+    .attr("dy", "1.2em");
 
-  svg.select(".tooltip > text")
+  svg.select(".nvTooltip > text")
     .append("tspan")
-      .attr("class", "tool_value_val")
-      .style("font-weight", "bold")
-      .attr("x", 0)
-      .attr("dy", "1.2em");
+    .attr("class", "tool_value_val")
+    .style("font-weight", "bold")
+    .attr("x", 0)
+    .attr("dy", "1.2em");
 
   svg.append("g")
     .attr("id", "closeButton")
@@ -134,9 +140,7 @@ function navio(selection, _h) {
       path.arc(crossSize/2, crossSize/2, crossSize*1.2, 0, Math.PI*2);
       sel.attr("d", path.toString());
     })
-    .on("click", function () {
-      deleteOneLevel();
-    });
+    .on("click", deleteOneLevel);
 
   xScale = d3.scaleBand()
     // .rangeBands([0, nv.attribWidth], 0.1, 0);
@@ -167,12 +171,33 @@ function navio(selection, _h) {
 
   context.scale(scale,scale);
 
+  context.imageSmoothingEnabled = context.mozImageSmoothingEnabled = context.webkitImageSmoothingEnabled = false;
 
-  // context.globalCompositeOperation = "source-over";
+  context.globalCompositeOperation = "source-over";
   // context.strokeStyle = "rgba(0,100,160,1)";
   // context.strokeStyle = "rgba(0,0,0,0.02)";
 
 
+
+  function showLoading(ele) {
+    d3.select(ele).style("cursor", "progress");
+    svg.style("cursor", "progress");
+  }
+
+  function hideLoading(ele) {
+    d3.select(ele).style("cursor", null);
+    svg.style("cursor", null);
+  }
+
+  function deferEvent(cbk) {
+    return function(d, i, all) {
+      showLoading(this);
+      setTimeout(() => {
+        cbk(d, i, all);
+        hideLoading(this);
+      },100);
+    };
+  }
 
   function invertOrdinalScale(scale, x) {
     // Taken from https://bl.ocks.org/shimizu/808e0f5cadb6a63f28bb00082dc8fe3f
@@ -184,17 +209,32 @@ function navio(selection, _h) {
     return qScale(x);
   }
 
-  function nvOnClickLevel(d) {
+  // Like d3.ascending but supporting null
+  function d3AscendingNull(a, b) {
+    return b === null ? (a === null ? 0 : -1)
+      : a < b ? -1 : a > b ? 1 : a >= b ? 0 : NaN;
+  }
+
+  function d3DescendingNull(a, b) {
+    return a === null ? (b === null ? 0 : -1)
+      : b < a ? -1 : b > a ? 1 : b >= a ? 0 : NaN;
+  }
+
+  function onSortLevel(d) {
     if (d3.event && d3.event.defaultPrevented) return; // dragged
-    console.log("click " + d);
-    var before = performance.now();
-    dataIs[d.level] = dataIs[d.level].sort(function (a, b) {
-      return d3.ascending(data[a][d.attrib], data[b][d.attrib]);
-    });
-    dataIs[d.level].forEach(function (row,i) { data[row].__i[d.level] = i; });
-    var after = performance.now();
-    console.log("Click sorting " + (after-before) + "ms");
-    dSortBy.set(d.level, d.attrib);
+    if (DEBUG) console.log("click " + d);
+
+
+    dSortBy[d.level] = {
+      attrib:d.attrib,
+      reverse:dSortBy[d.level]!==undefined && dSortBy[d.level].attrib === d.attrib ?
+        !dSortBy[d.level].reverse :
+        false
+    };
+
+    updateSorting(d.level);
+    removeBrushOnLevel(d.level);
+
     nv.updateData(dataIs, colScales, d.level);
   }
 
@@ -211,6 +251,10 @@ function navio(selection, _h) {
   function drawItem(item, level) {
     var attrib, i, y ;
 
+    if (yScales[level].bandwidth() > nv.divisionsThreshold) {
+      if (DEBUG) { console.log("Add borders"); }
+    }
+
     for (i = 0; i < dimensionsOrder.length; i++) {
       attrib = dimensionsOrder[i];
       y = Math.round(yScales[level](item[id]) + yScales[level].bandwidth()/2);
@@ -219,19 +263,20 @@ function navio(selection, _h) {
       context.beginPath();
       context.moveTo(Math.round(x(attrib, level)), y);
       context.lineTo(Math.round(x(attrib, level) + xScale.bandwidth()), y);
-      context.lineWidth = Math.round(yScales[level].bandwidth());
+      context.lineWidth = Math.ceil(yScales[level].bandwidth())+1;
       // context.lineWidth = 1;
       context.strokeStyle = item[attrib] === undefined ||
                 item[attrib] === null ||
+                item[attrib] === "" ||
                 item[attrib] === "none" ?
-                  "white" :
-                  colScales.get(attrib)(item[attrib]);
+        "white" :
+        colScales.get(attrib)(item[attrib]);
 
       context.stroke();
 
 
       //If the range bands are tick enough draw divisions
-      if (yScales[level].bandwidth() > nv.divisionsThreshold) {
+      if (yScales[level].bandwidth() > nv.divisionsThreshold*2) {
         var yLine = Math.round(yScales[level](item[id])) ;
         // y = yScales[level](item[id])+yScales[level].bandwidth()/2;
         context.beginPath();
@@ -250,9 +295,9 @@ function navio(selection, _h) {
   function drawLevelBorder(i) {
     context.beginPath();
     context.rect(levelScale(i),
-      yScales[i].range()[0],
-      xScale.range()[1],
-      yScales[i].range()[1]-100);
+      yScales[i].range()[0]-1,
+      xScale.range()[1]+1,
+      yScales[i].range()[1]+2-100);
     context.strokeStyle = "black";
     context.lineWidth = 1;
     context.stroke();
@@ -262,7 +307,7 @@ function navio(selection, _h) {
   function removeBrushOnLevel(lev) {
     d3.select("#level"+lev)
       .selectAll(".brush")
-      .call(dBrushes.get(lev).move, null);
+      .call(dBrushes[lev].move, null);
   }
 
   function removeAllBrushesBut(but) {
@@ -274,13 +319,14 @@ function navio(selection, _h) {
 
 
   function addBrush(d, i) {
-    dBrushes.set(i,
+    dBrushes[i]=
       d3.brushY()
         .extent([
           [x(xScale.domain()[0], i),yScales[i].range()[0]],
           [x(xScale.domain()[xScale.domain().length-1], i) + xScale.bandwidth()*1.1, yScales[i].range()[1]]
         ])
-        .on("end", brushended));
+        .on("end", onSelectByRange);
+
     var _brush = d3.select(this)
       .selectAll(".brush")
       .data([{
@@ -295,18 +341,56 @@ function navio(selection, _h) {
       .on("click", onSelectByValue)
       .on("mouseout", onMouseOut)
       .attr("class", "brush")
-      .call(dBrushes.get(i))
+      .call(dBrushes[i])
       .selectAll("rect")
       // .attr("x", -8)
       .attr("width", x(xScale.domain()[xScale.domain().length-1], i) + xScale.bandwidth()*1.1);
 
     _brush.exit().remove();
 
-    function brushended() {
-      // console.log("brushended", d3.event);
+
+    // Assigns the indexes on the new level data
+    function assignIndexes(filteredData) {
+      for (var j = 0; j < filteredData.length; j++) {
+        data[filteredData[j]].__i[i+1] = j;
+      }
+    }
+
+    // Applies the filters for the current level
+    function applyFilters() {
+      let before, after;
+
+      if (DEBUG) console.log("applyFilters ", filtersByLevel);
+
+      before = performance.now();
+      // Check if each item fits on any filter
+      var filteredData = dataIs[i].filter(d => {
+        data[d].visible = false;
+        for (let filter of filtersByLevel[i]) {
+          if (filter.filter(data[d])) {
+            data[d].visible = true;
+            break;
+          }
+        }
+        return data[d].visible;
+      });
+
+
+      // var filteredData = filtersByLevel[i].reduce(reduceFilters, dataIs[i]);
+      after = performance.now();
+      if (DEBUG) console.log("Applying filters " + (after-before) + "ms");
+
+
+      return filteredData;
+
+    }
+
+    function onSelectByRange() {
+      // if (DEBUG) console.log("brushended", d3.event);
+      showLoading(this);
       if (!d3.event.sourceEvent) return; // Only transition after input.
       if (!d3.event.selection){
-        console.log("Empty selection",d3.event.selection,d3.event.type, d3.event.sourceEvent);
+        if (DEBUG) console.log("Empty selection", d3.event.selection,d3.event.type, d3.event.sourceEvent);
         // return;
         // d3.event.preventDefault();
         // onSelectByValueFromCoords(d3.event.sourceEvent.clientX, d3.event.sourceEvent.clientY);
@@ -322,35 +406,30 @@ function navio(selection, _h) {
         first = dData.get(invertOrdinalScale(yScales[i], brushed[0])),
         // last = dData.get(invertOrdinalScale(yScales[i], brushed[1] -yScales[i].bandwidth()))
         last = dData.get(invertOrdinalScale(yScales[i], brushed[1]));
-      // console.log("first and last");
-      // console.log(first);
-      // console.log(last);
-      // console.log("first id "+ first.__i[i]+ " last id " + last.__i[i] );
-      // var brush0_minus_bandwidth = brushed[0] - yScales[i].bandwidth();
-      // var filteredData = data[i].filter(function (d) {
-      //   var y = yScales[i](d[id]);
-      //   d.visible = y >= (brush0_minus_bandwidth) && y <= (brushed[1] );
-      //   return d.visible;
-      // });
 
-      var filteredData = dataIs[i].filter(function (d) {
-        data[d].visible = data[d].__i[i] >= first.__i[i] && data[d].__i[i] <= last.__i[i];
-        return data[d].visible;
-      });
-
-      //Assign the index
-      for (var j = 0; j < filteredData.length; j++) {
-        data[filteredData[j]].__i[i+1] = j;
+      const newFilter = new FilterByRange({first, last, level:i});
+      if (d3.event.sourceEvent.shiftKey) {
+        // Append the filter
+        filtersByLevel[i].push(newFilter);
+      } else {
+        // Remove previous filters
+        filtersByLevel[i]= [ newFilter ];
       }
 
+
+      var filteredData = applyFilters();
+
+      //Assign the index
+      assignIndexes(filteredData);
+
       var after = performance.now();
-      console.log("Brushend filtering " + (after-before) + "ms");
+      if (DEBUG) console.log("Brushend filtering " + (after-before) + "ms");
 
 
-      console.log("Computing new data");
+      if (DEBUG) console.log("Computing new data");
       var newData = dataIs;
       if (filteredData.length===0) {
-        console.log("Empty selection!");
+        if (DEBUG) console.log("Empty selection!");
         return;
       } else {
         newData = dataIs.slice(0,i+1);
@@ -362,58 +441,75 @@ function navio(selection, _h) {
         newData,
         colScales
       );
-      console.log("out of updateData");
-      console.log("Selected " + filteredData.length + " calling updateCallback");
+      if (DEBUG) console.log("out of updateData");
+      if (DEBUG) console.log("Selected " + filteredData.length + " calling updateCallback");
       updateCallback(nv.getVisible());
 
-      // nv.update(false); //don"t update brushes
 
-      // d3.select(this).transition().call(d3.event.target.move, d1.map(x));
-    }// brushend
+      hideLoading(this);
+    }// onSelectByRange
 
     function onSelectByValue() {
-      console.log("click");
+      if (DEBUG) console.log("click");
+      showLoading(this);
       var clientY = d3.mouse(d3.event.target)[1],
         clientX = d3.mouse(d3.event.target)[0];
 
+
       onSelectByValueFromCoords(clientX, clientY);
+
+      hideLoading(this);
     }
 
 
     function onSelectByValueFromCoords(clientX, clientY) {
-      console.log("onSelectByValueFromCoords", clientX, clientY);
+      if (DEBUG) console.log("onSelectByValueFromCoords", clientX, clientY);
+
+
       removeAllBrushesBut(-1); // Remove all brushes
+
       var before = performance.now();
       var itemId = invertOrdinalScale(yScales[i], clientY);
       var after = performance.now();
-      console.log("invertOrdinalScale " + (after-before) + "ms");
+      if (DEBUG) console.log("invertOrdinalScale " + (after-before) + "ms");
 
       var itemAttr = invertOrdinalScale(xScale, clientX - levelScale(i));
-
       if (itemAttr === undefined) return;
 
       var sel = dData.get(itemId);
-      before = performance.now();
-      var filteredData = dataIs[i].filter(function (i) {
-        data[i].visible = data[i][itemAttr] === sel[itemAttr];
-        return data[i].visible;
-      });
-      filteredData.forEach(function (d, itemI) { data[d].__i[i+1] = itemI;});
-      after = performance.now();
-      console.log("Click filtering " + (after-before) + "ms");
+      const newFilter = new FilterByValue({sel, itemAttr});
+      if (d3.event.shiftKey) {
+        // Append the filter
+        filtersByLevel[i].push(newFilter);
+      } else {
+        // Remove previous filters
+        filtersByLevel[i]= [ newFilter ];
+      }
+
+
+      var filteredData = applyFilters();
+
+
+      // var filteredData = dataIs[i].filter(function (i) {
+      //   data[i].visible = data[i][itemAttr] === sel[itemAttr];
+      //   return data[i].visible;
+      // });
+
+      assignIndexes(filteredData);
 
       var newData = dataIs.slice(0,i+1);
       newData.push(filteredData);
+
 
       nv.updateData(
         newData,
         colScales
       );
 
-      console.log("Selected " + nv.getVisible().length + " calling updateCallback");
+      if (DEBUG) console.log("Selected " + nv.getVisible().length + " calling updateCallback");
       updateCallback(nv.getVisible());
     }
-  }
+  } // addBrush
 
 
   function onMouseOver(overData) {
@@ -429,7 +525,7 @@ function navio(selection, _h) {
     //   return e.visible;
     // });
 
-    svg.select(".tooltip")
+    svg.select(".nvTooltip")
       .attr("transform", "translate(" + (screenX) + "," + (screenY+20) + ")")
       .call(function (tool) {
         tool.select(".tool_id")
@@ -443,7 +539,7 @@ function navio(selection, _h) {
   }
 
   function onMouseOut() {
-    svg.select(".tooltip")
+    svg.select(".nvTooltip")
       .attr("transform", "translate(" + (-200) + "," + (-200) + ")")
       .call(function (tool) {
         tool.select(".tool_id")
@@ -457,7 +553,7 @@ function navio(selection, _h) {
 
   }
 
-  function drawBrushes() {
+  function drawBrushes(updateBrushes) {
     var attribs = xScale.domain();
 
     var levelOverlay = svg.select(".attribs")
@@ -465,10 +561,22 @@ function navio(selection, _h) {
       .data(dataIs);
 
     var levelOverlayEnter = levelOverlay.enter()
-      .append("g")
-        .attr("class", "levelOverlay")
-        .attr("id", function (d,i) { return "level" +i; })
+      .append("g");
+
+
+    levelOverlayEnter
+      .attr("class", "levelOverlay")
+      .attr("id", function (d,i) { return "level" +i; });
+
+    // Bugfix: when adding all attribs we need to update the brush
+    if (updateBrushes) {
+      levelOverlayEnter
+        .merge(levelOverlay)
         .each(addBrush);
+    } else {
+      levelOverlayEnter
+        .each(addBrush);
+    }
 
     var attribOverlay = levelOverlayEnter.merge(levelOverlay)
       .selectAll(".attribOverlay")
@@ -480,9 +588,9 @@ function navio(selection, _h) {
 
     var attribOverlayEnter = attribOverlay
       .enter()
-        .append("g")
-        .attr("class", "attribOverlay")
-        .style("cursor", "pointer");
+      .append("g")
+      .attr("class", "attribOverlay")
+      .style("cursor", "pointer");
 
     attribOverlayEnter
       .merge(attribOverlay)
@@ -510,7 +618,7 @@ function navio(selection, _h) {
     attribOverlayEnter
       .append("text")
       .merge(attribOverlay.select("text"))
-      .style("cursor", "grab")
+      .style("cursor", "point")
       .style("-webkit-user-select", "none")
       .style("-moz-user-select", "none")
       .style("-ms-user-select", "none")
@@ -518,24 +626,30 @@ function navio(selection, _h) {
       .text(function (d) {
         return d.attrib === "__seqId" ?
           "sequential Index" :
-          d.attrib;
+          d.attrib +
+          (dSortBy[d.level]!==undefined &&
+            dSortBy[d.level].attrib === d.attrib ?
+            dSortBy[d.level].reverse ?
+              " ↓" :
+              " ↑" :
+            "");
       })
       .attr("x", xScale.bandwidth()/2)
       .attr("y", 0)
       .style("font-weight", function (d) {
-        return dSortBy.has(d.level) &&
-          dSortBy.get(d.level) === d.attrib ?
+        return (dSortBy[d.level]!==undefined &&
+          dSortBy[d.level].attrib === d.attrib ?
           "bolder" :
-          "normal";
+          "normal");
       })
       .style("font-family", "sans-serif")
       .style("font-size", nv.attribFontSize+"px")
-      .on("click", nvOnClickLevel)
-      // .call(d3.drag()
-      //   .container(attribOverlayEnter.merge(attribOverlay).node())
-      //   .on("start", attribDragstarted)
-      //   .on("drag", attribDragged)
-      //   .on("end", attribDragended))
+      .on("click", deferEvent(onSortLevel))
+      .call(d3.drag()
+        .container(attribOverlayEnter.merge(attribOverlay).node())
+        .on("start", attribDragstarted)
+        .on("drag", attribDragged)
+        .on("end", attribDragended))
       .on("mousemove", function () {
         var sel = d3.select(this);
         sel = sel.transition!==undefined? sel.transition().duration(150) : sel;
@@ -553,6 +667,7 @@ function navio(selection, _h) {
 
     levelOverlayEnter
       .append("text")
+      .merge(levelOverlay.select("text.numNodesLabel"))
       .attr("class", "numNodesLabel")
       .style("font-family", "sans-serif")
       .style("pointer-events", "none")
@@ -573,8 +688,10 @@ function navio(selection, _h) {
   } // drawBrushes
 
   function attribDragstarted(d) {
-    console.log("start", d);
+    if (!d3.event.sourceEvent.shiftKey)
+      return;
 
+    if (DEBUG) console.log("start", d);
     d3.select(this.parentNode)
       .attr("transform", function (d) {
         return "translate(" +
@@ -588,7 +705,9 @@ function navio(selection, _h) {
 
   function attribDragged(d) {
     // var attribInto = invertOrdinalScale(xScale, d3.everythingnt.x + nv.attribFontSize/2 - levelScale(d.level));
-    // console.log(d3.event.x, d3.event.y, attribInto);
+    // if (DEBUG) console.log(d3.event.x, d3.event.y, attribInto);
+    if (!d3.event.sourceEvent.shiftKey)
+      return;
 
     d3.select(this.parentNode)
       .attr("transform", function (d) {
@@ -601,7 +720,10 @@ function navio(selection, _h) {
   }
 
   function attribDragended(d) {
-    console.log("end", d);
+    if (!d3.event.sourceEvent.shiftKey)
+      return;
+    if (DEBUG) console.log("end", d);
+
 
     var attrDraggedInto = invertOrdinalScale(xScale, d3.event.x + nv.attribFontSize/2 - levelScale(d.level));
     var pos;
@@ -627,6 +749,38 @@ function navio(selection, _h) {
     svg.select("#closeButton")
       .style("display", dataIs.length === 1 ? "none":"block")
       .attr("transform", "translate(" + (levelScale(maxLevel) + levelScale.bandwidth() - nv.levelsSeparation +15)  + "," + yScales[maxLevel].range()[0] + ")");
+  }
+
+  // Links between nodes
+  function drawLink(link) {
+    var
+      lastAttrib = xScale.domain()[xScale.domain().length-1],
+      rightBorder = x(lastAttrib, dataIs.length-1)+ xScale.bandwidth(),
+      ys = yScales[dataIs.length-1](link.source[id]) + yScales[dataIs.length-1].bandwidth()/2,
+      yt = yScales[dataIs.length-1](link.target[id]) + yScales[dataIs.length-1].bandwidth()/2,
+      miny = Math.min(ys, yt),
+      maxy = Math.max(ys, yt),
+      midy = maxy-miny;
+    context.moveTo(rightBorder, miny); //starting point
+    context.quadraticCurveTo(
+      rightBorder + midy/6, miny + midy/2, // mid point
+      rightBorder, maxy // end point
+    );
+  }
+
+  function drawLinks() {
+    if (!links.length) return;
+    if (DEBUG) console.log("Draw links ", links[links.length-1].length , links);
+    context.save();
+    context.beginPath();
+    context.strokeStyle = nv.linkColor;
+    context.globalAlpha = Math.min(1,
+      Math.max(0.1,1000 / links[links.length-1].length )
+    ); // More links more transparency
+    // context.lineWidth = 0.5;
+    visibleLinks.forEach(drawLink);
+    context.stroke();
+    context.restore();
   }
 
 
@@ -658,9 +812,9 @@ function navio(selection, _h) {
       // Compute the yPrev by calculating the index of the corresponding representative
       var iOnPrev = dData.get(data[item][id]).__i[level-1];
       var iRep = Math.floor(iOnPrev - iOnPrev%dataIs[level-1].itemsPerpixel);
-      // console.log("i rep = "+ iRep);
-      // console.log(data[level-1][iRep]);
-      // console.log(yScales[level-1](data[level-1][iRep][id]));
+      // if (DEBUG) console.log("i rep = "+ iRep);
+      // if (DEBUG) console.log(data[level-1][iRep]);
+      // if (DEBUG) console.log(yScales[level-1](data[level-1][iRep][id]));
       var locPrevLevel = {
         x: levelScale(level-1) + xScale.range()[1],
         y: yScales[level-1]( data[dataIs[level-1][iRep]] [id])
@@ -703,20 +857,45 @@ function navio(selection, _h) {
       d.__i[0] = i;
 
     }
+
+    filtersByLevel = [];
+    filtersByLevel[0] = []; // Initialice filters as empty for lev 0
     // nv.updateData(mData, mColScales, mSortByAttr);
 
     var after = performance.now();
-    console.log("Init data " + (after-before) + "ms");
+    if (DEBUG) console.log("Init data " + (after-before) + "ms");
 
   };
 
+  function updateSorting(levelToUpdate) {
+    if (!dSortBy.hasOwnProperty(levelToUpdate)) {
+      if (DEBUG) console.log("UpdateSorting called without attrib in dSortBy", levelToUpdate, dSortBy);
+      return;
+    }
+
+    var before = performance.now();
+
+
+    const sort = dSortBy[levelToUpdate];
+    dataIs[levelToUpdate] = dataIs[levelToUpdate].sort(function (a, b) {
+      return sort.reverse ?
+        d3DescendingNull(data[a][sort.attrib], data[b][sort.attrib]) :
+        d3AscendingNull(data[a][sort.attrib], data[b][sort.attrib]);
+    });
+    dataIs[levelToUpdate].forEach(function (row,i) { data[row].__i[levelToUpdate] = i; });
+
+    var after = performance.now();
+    if (DEBUG) console.log("Sorting level " + levelToUpdate + " " + (after-before) + "ms");
+
+  }
+
   function updateScales(levelToUpdate) {
-    console.log("Update scales");
+    if (DEBUG) console.log("Update scales");
     var before = performance.now();
     // yScales=[];
     var lastLevel = dataIs.length-1;
 
-    console.log("Delete unvecessary scales");
+    if (DEBUG) console.log("Delete unvecessary scales");
     // Delete unvecessary scales
     yScales.splice(lastLevel+1, yScales.length);
     levelToUpdate = levelToUpdate!==undefined ? levelToUpdate : lastLevel;
@@ -726,12 +905,11 @@ function navio(selection, _h) {
       .paddingOuter(0);
 
 
-
-    console.log("Compute representatives");
+    if (DEBUG) console.log("Compute representatives");
     var representatives = [];
     if (dataIs[levelToUpdate].length>height) {
       var itemsPerpixel = Math.max(Math.floor(dataIs[levelToUpdate].length / (height*2)), 1);
-      console.log("itemsPerpixel", itemsPerpixel);
+      if (DEBUG) console.log("itemsPerpixel", itemsPerpixel);
       dataIs[levelToUpdate].itemsPerpixel = itemsPerpixel;
       for (var i = 0; i< dataIs[levelToUpdate].length; i+=itemsPerpixel ) {
         representatives.push(dataIs[levelToUpdate][i]);
@@ -756,7 +934,7 @@ function navio(selection, _h) {
     // });
 
 
-    console.log("Update color scale domains");
+    if (DEBUG) console.log("Update color scale domains");
     // Update color scales domains
 
     // colScales = d3.map();
@@ -764,9 +942,17 @@ function navio(selection, _h) {
       function (attrib) {
         if (attrib === "visible") return;
         var scale = colScales.get(attrib);
-        scale.domain(d3.extent(dataIs[0].representatives.map(function (rep) {
-          return data[rep][attrib];
-        }))); //TODO: make it compute it based on the local range
+        if (scale.__type==="seq" || scale.__type==="date") {
+          scale.domain(d3.extent(dataIs[0].map(function (i) {
+            return data[i][attrib];
+          }))); //TODO: make it compute it based on the local range
+        } else if (scale.__type==="div") {
+          const [min, max] = d3.extent(dataIs[0].map(function (i) {
+            return data[i][attrib];
+          }));
+          const absMax = Math.max(-min, max); // Assumes diverging point on 0
+          scale.domain([-absMax, absMax]);
+        }
         colScales.set(attrib, scale);
       }
     );
@@ -782,23 +968,38 @@ function navio(selection, _h) {
       .paddingOuter(0);
 
     var after = performance.now();
-    console.log("Updating Scales " + (after-before) + "ms");
+    if (DEBUG) console.log("Updating Scales " + (after-before) + "ms");
   }
 
   nv.updateData = function (mDataIs, mColScales, levelToUpdate) {
-    console.log("updateData");
+    if (DEBUG) console.log("updateData");
     var before = performance.now();
     var ctxWidth;
     if (typeof mDataIs !== typeof []) {
       console.error("navio updateData didn't receive an array");
       return;
     }
-    // if (!dSortBy.has(mDataIs.length-1)) {
-    //   dSortBy.set(mDataIs.length-1, mSortByAttr);
-    // }
+
     colScales = mColScales !== undefined ? mColScales: colScales;
     dataIs = mDataIs;
 
+
+    // Delete filters on unused levels
+    filtersByLevel.splice(mDataIs.length);
+    // Initialize new filter level
+    filtersByLevel[mDataIs.length] = [];
+
+    if (links.length>0) {
+      visibleLinks = links.filter(function (d) {
+        return d.source.visible && d.target.visible;
+      });
+    }
+
+    // Delete unnecesary brushes
+    dBrushes.splice(mDataIs.length);
+
+    // Update the sorting of the last level
+    updateSorting(mDataIs.length-1);
     updateScales(levelToUpdate);
 
     ctxWidth = levelScale.range()[1] + nv.margin + x0;
@@ -815,19 +1016,24 @@ function navio(selection, _h) {
       .attr("height", height);
     nv.update();
     var after = performance.now();
-    console.log("Updating data " + (after-before) + "ms");
+    if (DEBUG) console.log("Updating data " + (after-before) + "ms");
 
   };
 
   function deleteOneLevel() {
     if (dataIs.length<=1) return;
-    console.log("Delete one level");
+
+    showLoading(this);
+    if (DEBUG) console.log("Delete one level");
     removeBrushOnLevel(dataIs.length-2);
     dataIs[dataIs.length-2].forEach(function (d) { data[d].visible=true; });
 
     dataIs = dataIs.slice(0, dataIs.length-1);
+
     nv.updateData(dataIs, colScales);
     updateCallback(nv.getVisible());
+
+    hideLoading(this);
   }
 
   function moveAttrToPos(attr, pos) {
@@ -840,7 +1046,9 @@ function navio(selection, _h) {
 
 
 
-  nv.update = function() {
+  nv.update = function(_updateBrushes) {
+    var updateBrushes = _updateBrushes !== undefined ? _updateBrushes : false;
+
     var before = performance.now();
 
     var w = levelScale.range()[1] + nv.margin + x0;
@@ -852,93 +1060,133 @@ function navio(selection, _h) {
       //     drawItem(levelData[j], i);
       //   }
       // } else { // draw all
+
+      drawLevelBorder(i);
       levelData.representatives.forEach(function (rep) {
         drawItem(data[rep], i);
       });
       // }
 
-      drawLevelBorder(i);
+
       drawLevelConvections(i);
 
     });
 
 
-    drawBrushes();
+    drawLinks();
+
+    drawBrushes(updateBrushes);
     drawCloseButton();
+
     var after = performance.now();
-    console.log("Redrawing " + (after-before) + "ms");
+    if (DEBUG) console.log("Redrawing " + (after-before) + "ms");
 
   };
 
   nv.addAttrib = function (attr, scale) {
     if (dimensionsOrder.indexOf(attr)!== -1) return;
     dimensionsOrder.push(attr);
-    colScales.set(attr,scale);
+    colScales.set(attr, scale);
     return nv;
   };
 
-  nv.addSequentialAttrib = function (attr, scale ) {
-    nv.addAttrib(attr,scale ||
+  nv.addSequentialAttrib = function (attr, _scale ) {
+    const domain = data!==undefined && data.length>0 ?
+      d3.extent(data, function (d) { return d[attr]; }) :
+      [0, 1];   //if we don"t have data, set the default domain
+    const scale = _scale ||
       d3.scaleSequential(defaultColorInterpolator)
-        .domain(data!==undefined && data.length>0 ?
-          d3.extent(data, function (d) { return d[attr]; }) :
-          [0, 1]) //if we don"t have data, set the default domain
-    );
+        .domain(domain);
+    scale.__type = "seq";
+    nv.addAttrib(attr, scale);
     return nv;
   };
 
-  // nv.addDivergingAttrib = function (attr, scale ) {
-  //   var domain = data!==undefined && data.length>0 ?
-  //     d3.extent(data, function (d) { return d[attr]; }) :
-  //     [-1,  1];
-  //   nv.addAttrib(attr,scale ||
-  //     d3.scaleDiverging(defaultColorInterpolator)
-  //       .domain([domain[0], 0, domain[1]]) //if we don"t have data, set the default domain
-  //   );
-  //   return nv;
-  // };
+  // Same as addSequentialAttrib but with a different color
+  nv.addDateAttrib = function (attr, _scale ) {
+    const domain = data!==undefined && data.length>0 ?
+      d3.extent(data, function (d) { return d[attr]; }) :
+      [0, 1];
 
-  nv.addCategoricalAttrib = function (attr, scale ) {
-    nv.addAttrib(attr,scale ||
-      d3.scaleOrdinal(d3.schemeCategory10));
+    const scale = _scale ||
+      d3.scaleSequential(defaultColorInterpolatorDate)
+        .domain(domain); //if we don"t have data, set the default domain
+    nv.addAttrib(attr,scale);
+
+    scale.__type = "date";
     return nv;
   };
 
-  // nv.addAllAttribs = function (_attribs, scale) {
-  //   if (!data || !data.length) throw Error("no data defined yet!");
+  // Adds a diverging scale
+  nv.addDivergingAttrib = function (attr, _scale ) {
+    const domain = data!==undefined && data.length>0 ?
+      d3.extent(data, function (d) { return d[attr]; }) :
+      [-1,  1];
+    const scale = _scale ||
+      d3.scaleSequential(defaultColorInterpolatorDiverging)
+        .domain([domain[0], domain[1]]); //if we don"t have data, set the default domain
+    scale.__type = "div";
+    nv.addAttrib(attr, scale);
+    return nv;
+  };
 
-  //   var attribs = _attribs!==undefined ? _attribs : getAttribs(data[0]);
-  //   var guessedScale, domain;
-  //   attribs.forEach(function (attr) {
-  //     if (typeof(data[attr]) === typeof("")) {
-  //       guessedScale = d3.scaleOrdinal(d3.schemeCategory10);
-  //     // } else if (typeof(data[attr]) === typeof(new Date())) {
-  //     //   guessedScale = d3.scaleSequential(defaultColorInterpolatorDate)
-  //     //     .domain(data!==undefined && data.length>0 ?
-  //     //       d3.extent(data, function (d) { return d[attr]; }) :
-  //     //       [0, 1]); //if we don"t have data, set the default domain
-  //     } else {
-  //       domain = data!==undefined && data.length>0 ?
-  //         d3.extent(data, function (d) { return d[attr]; }) :
-  //         [0, 1];
+  nv.addCategoricalAttrib = function (attr, _scale ) {
+    const scale = _scale ||
+      d3.scaleOrdinal(d3.schemeCategory10);
+    scale.__type = "cat";
+    nv.addAttrib(attr, scale);
 
-  //       // if (domain[0] < 0) {
-  //       //   d3.scaleSequential(defaultColorInterpolatorDiverging)
-  //       //     .domain([domain[0], 0, domain[1]]); //if we don"t have data, set the default domain
-  //       // } else {
-  //         d3.scaleSequential(defaultColorInterpolator)
-  //           .domain(domain); //if we don"t have data, set the default domain
-  //       // }
-  //     }
-  //     console.log("attr", attr, guessedScale);
+    return nv;
+  };
 
-  //     nv.addAttrib(attr,scale ||
-  //       guessedScale);
-  //   });
+  function findNotNull(data, attr) {
+    let i;
+    for ( i = 0; i<nv.howManyItemsShouldSearchForNotNull && i< data.length; i++ ) {
+      if (data[0][attr] !== null &&
+        data[0][attr] !== undefined &&
+        data[0][attr] !== "") {
+        return data[i][attr];
+      }
+    }
 
-  //   nv.updateData(dataIs);
-  //   return nv;
-  // };
+    return data[i][attr];
+  }
+
+  // Adds all the attributes on the data, or all the attributes provided on the list based on their types
+  nv.addAllAttribs = function (_attribs) {
+    if (!data || !data.length) throw Error("addAllAttribs called without data to guess the attribs. Make sure to call it after setting the data");
+
+    var attribs = _attribs!==undefined ? _attribs : getAttribs(data[0]);
+    attribs.forEach(function (attr) {
+      if (attr === "__seqId" ||
+        attr === "__i")
+        return;
+
+      const dataSample = findNotNull(data, attr);
+      if (dataSample === null ||
+        dataSample === undefined ||
+        dataSample === "") {
+        nv.addCategoricalAttrib(attr);
+      } else if (typeof(dataSample) === typeof(0)) {
+        // Numbers
+        if (d3.min(data, d=> d[attr]) < 0) {
+          nv.addDivergingAttrib(attr);
+        } else {
+          nv.addSequentialAttrib(attr);
+        }
+      } else if (typeof(dataSample) === typeof(new Date())) {
+        nv.addDateAttrib(attr);
+      } else {
+        // Default categories
+        nv.addCategoricalAttrib(attr);
+
+      }
+    });
+
+    nv.data(data);
+    drawBrushes(true); // updates brushes width
+    return nv;
+  };
 
 
   nv.data = function(_) {
@@ -1000,6 +1248,15 @@ function navio(selection, _h) {
 
   nv.id = function(_) {
     return arguments.length ? (id = _, nv) : id;
+  };
+
+  nv.links = function(_) {
+    if (arguments.length) {
+      links = _;
+      return nv;
+    } else {
+      return links;
+    }
   };
 
   return nv;

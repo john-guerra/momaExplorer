@@ -38,25 +38,25 @@ class App extends Component {
   }
 
   componentDidMount() {
-    d3.csv("./Artworks_less_columns.csv", (err, data) => {
-    // d3.csv("./Artworks_less_columns.csv")
-    //   .then((data) => {
+    // d3.csv("./Artworks_less_columns.csv", (err, data) => {
+    d3.csv("./Artworks_less_columns.csv")
+      .then((data) => {
       // if (err) throw err;
-      const parseDate = d3.timeParse("%Y-%m-%d");
-      data.forEach((row) => {
-        row["Height (cm)"] = +row["Height (cm)"];
-        row["Width (cm)"] = +row["Width (cm)"];
-        row["DateAcquired"] = parseDate(row["DateAcquired"]);
-        row["hasImage"] = row.ThumbnailURL ? true : false;
-        row.date = row.Date ? +(row.Date.replace( /^\D+/g, "").slice(0,4)) : row.Date;
-        row.date = !isNaN(row.date) && row.date>1700 ? row.date : null;
+        const parseDate = d3.timeParse("%Y-%m-%d");
+        data.forEach((row) => {
+          row["Height (cm)"] = +row["Height (cm)"];
+          row["Width (cm)"] = +row["Width (cm)"];
+          row["DateAcquired"] = parseDate(row["DateAcquired"]);
+          row["hasImage"] = row.ThumbnailURL ? true : false;
+          row.date = row.Date ? +(row.Date.replace( /^\D+/g, "").slice(0,4)) : row.Date;
+          row.date = !isNaN(row.date) && row.date>1700 ? row.date : null;
+        });
+        this.setState({
+          images:convert(data.slice(0,51)),
+          // data:d3.range(20).reduce((p) => p.concat(data),[])
+          data:data
+        });
       });
-      this.setState({
-        images:convert(data.slice(0,51)),
-        // data:d3.range(20).reduce((p) => p.concat(data),[])
-        data:data
-      });
-    });
     // fetch("http://localhost:8080/Artworks.csv.gz")
     //   .then((res) => {
     //     return res.json();
