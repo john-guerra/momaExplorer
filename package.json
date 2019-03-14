@@ -2,11 +2,11 @@
   "name": "front",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://john-guerra.github.io/momaExplorer/",
+  "homepage": "./",
   "dependencies": {
     "d3": "4.13",
     "d3-scale-chromatic": "^1.3.3",
-    "navio": "^0.0.12",
+    "navio": "0.0.21",
     "prop-types": "^15.6.2",
     "react": "^16.5.1",
     "react-dom": "^16.5.1",

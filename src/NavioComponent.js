@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import * as d3 from "d3";
 import * as d3ScaleChromatic from "d3-scale-chromatic";
-import navio from "./navio.js";
+import navio from "../node_modules/navio/dist/navio.js";
 
 import "./NavioComponent.css";
 
