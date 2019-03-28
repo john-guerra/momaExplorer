@@ -10,7 +10,7 @@ import "./NavioComponent.css";
 class NavioComponent extends Component {
   componentDidMount() {
     console.log("NavioComponent did mount");
-    this.nn =  navio(d3.select(this.target), 590)
+    this.nn =  navio(d3.select(this.target), 520)
       .id("ObjectID")
       .updateCallback(this.props.updateCallback)
       .addTextAttrib("Title")
@@ -30,7 +30,7 @@ class NavioComponent extends Component {
       .addCategoricalAttrib("Classification")
       .addCategoricalAttrib("Medium")
       .addCategoricalAttrib("Gender")
-      .addCategoricalAttrib("Nationality");
+      .addCategoricalAttrib("Nationality", d3.scaleOrdinal(d3.schemeSet3.concat(d3.schemeSet2).concat(d3.schemeSet1)));
 
     if (this.props.data) {
       this.nn.data(this.props.data);

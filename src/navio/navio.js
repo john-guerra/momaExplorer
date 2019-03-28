@@ -236,7 +236,7 @@ function navio(selection, _h) {
     tooltip = new Popper(ref,
       tooltipElement.node(),
       {
-        placement: "auto",
+        placement: "right",
         // modifiers: {
         //   preventOverflow: {
         //     boundariesElement: selection.node(),
@@ -952,11 +952,12 @@ function navio(selection, _h) {
           return Math.min(nv.attribFontSize, nv.attribWidth) + "px";
         })
         .on("click", deferEvent(onSortLevel))
-        .call(d3.drag()
-          .container(attribOverlayEnter.merge(attribOverlay).node())
-          .on("start", attribDragstarted)
-          .on("drag", attribDragged)
-          .on("end", attribDragended))
+        // .call(d3.drag()
+          // .container(attribOverlayEnter.merge(attribOverlay).node())
+          // .on("start", attribDragstarted)
+          // .on("drag", attribDragged)
+          // .on("end", attribDragended)
+        // )
         .on("mousemove", function () {
           var sel = d3.select(this);
           sel = sel.transition!==undefined? sel.transition().duration(150) : sel;
