@@ -10,7 +10,7 @@ import "./NavioComponent.css";
 class NavioComponent extends Component {
   componentDidMount() {
     console.log("NavioComponent did mount");
-    this.nn =  navio(d3.select(this.target), 520)
+    this.nn =  navio(d3.select(this.target), 620)
       .id("ObjectID")
       .updateCallback(this.props.updateCallback)
       .addTextAttrib("Title")
