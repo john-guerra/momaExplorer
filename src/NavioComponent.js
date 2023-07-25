@@ -1,27 +1,38 @@
-import React, {Component} from "react";
+import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import * as d3 from "d3";
 
-import navio from "./navio/navio.js";
+// import navio from "./navio/navio.js";
 
+
+import navio from "../node_modules/navio/dist/navio.esm.js";
 import "./NavioComponent.css";
+
+
+console.log("navio", navio);
 
 class NavioComponent extends Component {
   componentDidMount() {
     console.log("NavioComponent did mount");
-    this.nn =  navio(d3.select(this.target), 620)
+    this.nn = navio(d3.select(this.target), 620)
       .id("ObjectID")
       .updateCallback(this.props.updateCallback)
       .addTextAttrib("Title")
-      .addSequentialAttrib("Height (cm)",
-        d3.scalePow()
+      .addSequentialAttrib(
+        "Height (cm)",
+        d3
+          .scalePow()
           .exponent(0.25)
-          .range([d3.interpolatePurples(0), d3.interpolatePurples(1)]))
-      .addSequentialAttrib("Width (cm)",
-        d3.scalePow()
+          .range([d3.interpolatePurples(0), d3.interpolatePurples(1)])
+      )
+      .addSequentialAttrib(
+        "Width (cm)",
+        d3
+          .scalePow()
           .exponent(0.25)
-          .range([d3.interpolatePurples(0), d3.interpolatePurples(1)]))
+          .range([d3.interpolatePurples(0), d3.interpolatePurples(1)])
+      )
       .addDateAttrib("date")
       // .addSequentialAttrib("Date")
       // .addSequentialAttrib("DateAcquired")
@@ -30,12 +41,19 @@ class NavioComponent extends Component {
       .addCategoricalAttrib("Classification")
       .addCategoricalAttrib("Medium")
       .addCategoricalAttrib("Gender")
-      .addCategoricalAttrib("Nationality", d3.scaleOrdinal(d3.schemeSet3.concat(d3.schemeSet2).concat(d3.schemeSet1)));
+      .addCategoricalAttrib(
+        "Nationality",
+        d3.scaleOrdinal(
+          d3.schemeSet3.concat(d3.schemeSet2).concat(d3.schemeSet1)
+        )
+      );
+
+    this.nn.attribWidth = 18;
+    this.nn.attribFontSize = 14;
 
     if (this.props.data) {
       this.nn.data(this.props.data);
     }
-
   }
   // componentDidUpdate() {
   //   if (this.props.data) {
@@ -44,17 +62,21 @@ class NavioComponent extends Component {
   // }
 
   componentWillUpdate(newProps) {
-    console.log("NavioComponent will update data.length=" + newProps.data.length);
+    console.log(
+      "NavioComponent will update data.length=" + newProps.data.length
+    );
     if (newProps.data.length !== this.props.data.length)
       this.nn.data(newProps.data);
   }
 
   render() {
-    console.log("NavioComponent render" );
+    console.log("NavioComponent render");
     return (
       <div
         className="NavioComponent"
-        ref={(target) => this.target = target }></div>);
+        ref={target => (this.target = target)}
+      ></div>
+    );
   }
 }
 
