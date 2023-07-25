@@ -4,7 +4,7 @@
   "private": true,
   "homepage": "./",
   "dependencies": {
-    "d3": "7",
+    "d3": "^7.8.5",
     "navio": "^0.0.73",
     "popper.js": "1.16.1",
     "prop-types": "^15.6.2",
@@ -12,7 +12,7 @@
     "react-dom": "^16.5.1",
     "react-grid-gallery": "^0.4.8",
     "react-router-dom": "^4.3.1",
-    "react-scripts": "^1.1.5"
+    "react-scripts": "2.1.8"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -25,5 +25,11 @@
   "_proxy": "http://localhost:3000",
   "devDependencies": {
     "gh-pages": "^1.0.0"
-  }
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not ie <= 11",
+    "not op_mini all"
+  ]
 }
